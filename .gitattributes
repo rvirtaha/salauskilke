@@ -1,0 +1,3 @@
+# Always convert line endings to unix
+# https://docs.github.com/en/get-started/getting-started-with-git/configuring-git-to-handle-line-endings
+* text=auto eol=lf
