@@ -1,0 +1,20 @@
+version: "2"
+sql:
+  - name: "postgres"
+    engine: "postgresql"
+    queries:
+      - "internal/db/queries/*.sql"
+    schema:
+      - "internal/db/migrations/*.sql"
+    strict_function_checks: true
+    strict_order_by: true
+    gen:
+      go:
+        package: "db"
+        out: "internal/generated/db"
+        sql_package: "pgx/v5"
+        emit_sql_as_comment: true
+#   database:
+#   rules:
+#   codegen:
+#   analyzer:
