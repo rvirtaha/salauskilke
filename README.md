@@ -46,9 +46,55 @@ The structure of this project is based on the (standard golang project layout)[h
 ...
 
 
-## Dev setup
+## Development
+
+### Setup
 
 - Install Go
-- Install (sqlc)[https://docs.sqlc.dev/en/stable/overview/install.html]
+- Install Docker
+- Install (sqlc)[https://docs.sqlc.dev/en/stable/overview/install.html#go-install]
+- Install dbmate (see [migrations](#migrations))
 
-...
+
+```bash
+# Run the postgres container
+docker compose up -d
+
+# Create the .env file according to the template
+cp .env.template .env
+
+# Run the database migrations
+dbmate up
+```
+
+### Migrations
+
+The project uses dbmate to manage migrations. See the [dbmate docs](https://github.com/amacneil/dbmate?tab=readme-ov-file#usage). Note that dbmate relies on environment variables for configuration, which it can also read from a `.env` file.
+
+
+```bash
+# There are alternative ways of installing dbmate, this is easiest.
+npm install -g dbmate
+
+dbmate --help   # print usage help
+dbmate new      # generate a new migration file
+dbmate up       # create the database (if it does not already exist) and run any pending migrations
+dbmate create   # create the database
+dbmate drop     # drop the database
+dbmate migrate  # run any pending migrations
+dbmate rollback # roll back the most recent migration
+dbmate down     # alias for rollback
+dbmate status   # show the status of all migrations (supports --exit-code and --quiet)
+dbmate dump     # write the database schema.sql file
+dbmate load     # load schema.sql file to the database
+dbmate wait     # wait for the database server to become available
+```
+
+### sqlc
+
+Add new queries inside the `internal/db/queries` directory. Then, use `sqlc` to generate the go code to use the queries in go.
+
+```bash
+sqlc compile    # Statically check SQL for syntax and type errors
+sqlc generate   # Generate source code from SQL
+```
