@@ -1,7 +1,37 @@
 package main
 
-import "log"
+import (
+	"context"
+	"fmt"
+	"os"
+	"salauskilke/internal/generated/db"
+	"salauskilke/internal/server"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+)
 
 func main() {
-	log.Println("Hello world!")
+
+	// Database connection
+	timeoutDuration := 5 * time.Second
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), timeoutDuration)
+	defer cancel()
+
+	conn, err := pgx.Connect(timeoutCtx, "postgres://salauskilke:secret@localhost:5432/salauskilke?sslmode=disable")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Close(context.Background())
+	q := db.New(conn)
+
+	
+
+	// Start Gin router
+	router := server.SetupRouter(q)
+	if err := router.Run(":8080"); err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to start server: %v\n", err)
+		os.Exit(1)
+	}
 }
