@@ -23,6 +23,7 @@ func SetupRouter(q *db.Queries) *gin.Engine {
 
 	views := engine.Group("/")
 	{
+		views.GET("/", handlers.RootHandler)
 		views.GET("/hello", handlers.HelloHandler)
 	}
 

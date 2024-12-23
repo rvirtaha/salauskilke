@@ -22,6 +22,11 @@ func CreatePingHandler () gin.HandlerFunc {
 	}
 }
 
+func RootHandler(c *gin.Context) {
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"DevMode": gin.Mode() != gin.ReleaseMode,
+	})
+}
 func HelloHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "hello.html", nil)
 }
