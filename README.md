@@ -54,9 +54,12 @@ The structure of this project is based on the (standard golang project layout)[h
 - Install Docker
 - Install (sqlc)[https://docs.sqlc.dev/en/stable/overview/install.html#go-install]
 - Install dbmate (see [migrations](#migrations))
-
+- Install node
 
 ```bash
+# Install npm dependencies
+npm install
+
 # Run the postgres container
 docker compose up -d
 
@@ -65,6 +68,27 @@ cp .env.template .env
 
 # Run the database migrations
 dbmate up
+```
+
+There are a couple of ways to start up the application: Using Gin debug or release modes. The main difference as of now, is how the application includes the javascript and css in [base.html](/internal/templates/components/base.html). Debug mode uses vite which does the building in memory and serves the files from a proxy server at localhost:8081, wheras release mode has vite build the files to `/internal/static/build`, which are served from there.
+
+**Starting up with debug mode**
+```bash
+npm run dev
+
+export GIN_MODE=debug   # This is the default behaviour
+go run cmd/main.go
+```
+
+**Starting up with release mode**
+```bash
+# Transpile the ts and build css once
+npm run build:prod
+# Or alternatively, watch for changes
+npm run build:dev 
+
+export GIN_MODE=release
+go run cmd/main.go
 ```
 
 ### Migrations
