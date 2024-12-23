@@ -21,3 +21,7 @@ func CreatePingHandler () gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, req.Message)
 	}
 }
+
+func HelloHandler(c *gin.Context) {
+	c.HTML(http.StatusOK, "hello.html", nil)
+}
