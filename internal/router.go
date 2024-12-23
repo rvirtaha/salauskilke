@@ -1,9 +1,11 @@
-package server
+package router
 
 import (
 	"salauskilke/internal/generated/db"
 
 	"github.com/gin-gonic/gin"
+
+	"salauskilke/internal/handlers"
 )
 
 func SetupRouter(q *db.Queries) *gin.Engine {
@@ -12,7 +14,7 @@ func SetupRouter(q *db.Queries) *gin.Engine {
 
 	api := engine.Group("/api")
 	{
-		api.POST("/ping", CreatePingHandler())
+		api.POST("/ping", handlers.CreatePingHandler())
 	}
 
 	return engine

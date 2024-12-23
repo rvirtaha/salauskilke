@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	router "salauskilke/internal"
 	"salauskilke/internal/generated/db"
-	"salauskilke/internal/server"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -29,7 +29,7 @@ func main() {
 	
 
 	// Start Gin router
-	router := server.SetupRouter(q)
+	router := router.SetupRouter(q)
 	if err := router.Run(":8080"); err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to start server: %v\n", err)
 		os.Exit(1)
