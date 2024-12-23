@@ -32,6 +32,9 @@ Also public-private -key encryption. Anyone can use the public key to encrypt da
 **Symmetric encryption, AES**
 Symmetric encryption uses the same key to encrypt the plaintext and decrypt the ciphertext. Symmetric encryption is used for block-ciphers (encrypting the plaintext secrets), because AES can encrypt large files quickly, which would be impractical with RSA.
 
+**Key derivation / Argon2**
+We cannot directly use a user's password to encrypt their private RSA keys. Also, we should never store the user's password in plaintext, but rather store a salted hash of it. Password based key derivation functions such as bcrypt, PBKDF2 or Argon2 fix both of these issues. This application uses Argon2id.
+
 **E2E encryption, end-to-end encryption**
 Decrypted secrets only ever exist on a client device. At no point is there enough information server-side to decrypt any secrets.
 
