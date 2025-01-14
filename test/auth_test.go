@@ -1,0 +1,81 @@
+package main
+
+import (
+	"net/http"
+	"salauskilke/internal/handlers"
+	"salauskilke/internal/utils"
+	"testing"
+
+	"github.com/bytemare/opaque"
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/assert"
+)
+
+var (
+	password []byte = []byte("password")
+	serverID []byte = []byte("server")
+	clientID []byte = []byte("username")
+)
+
+func TestRegistration(t *testing.T) {
+
+	conf := opaque.DefaultConfiguration()
+
+	opaqueClient, err := conf.Client()
+	assert.NoError(t, err)
+
+	baseUrl := "http://localhost:8080/api"
+	httpClient := resty.New()
+
+	// ---------- /register/initialize ----------
+	registrationMessage := utils.EncodeBase64(opaqueClient.RegistrationInit(password).Serialize())
+
+	initPayload := handlers.InitializeRegistrationRequest{
+		RegistrationMessage: registrationMessage,
+	}
+
+	initResp, err := httpClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(initPayload).
+		SetResult(&handlers.InitializeRegistrationResponse{}).
+		Post(baseUrl + "/register/initialize")
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, initResp.StatusCode())
+	initResult := initResp.Result().(*handlers.InitializeRegistrationResponse)
+	
+	t.Logf("%v", initResult)
+
+	// ---------- /register/finalize ----------
+	responseMessage, err := utils.DecodeBase64(initResult.ResponseMessage); assert.NoError(t, err)
+	credID, err  := utils.DecodeBase64(initResult.CredentialID); 			assert.NoError(t, err)
+	
+	registrationResponse, err := opaqueClient.Deserialize.RegistrationResponse(responseMessage)
+	assert.NoError(t, err)
+	registrationRecord, exportKey := opaqueClient.RegistrationFinalize(registrationResponse, opaque.ClientRegistrationFinalizeOptions{
+		ClientIdentity: clientID,
+		ServerIdentity: serverID,
+	})
+	serializedRecord := utils.EncodeBase64(registrationRecord.Serialize())
+	serializedCredID := utils.EncodeBase64(credID)
+	serializedUsername := utils.EncodeBase64(clientID)
+	
+	finPayload := handlers.FinalizeRegistrationRequest{
+		Username: serializedUsername,
+		RegistrationRecord: serializedRecord,
+		CredentialID: serializedCredID,
+	}
+
+	finResp, err := httpClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(finPayload).
+		SetResult(&handlers.FinalizeRegistrationResponse{}).
+		Post(baseUrl + "/register/finalize")
+	
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, finResp.StatusCode())
+	finResult := finResp.Result().(*handlers.FinalizeRegistrationResponse)
+
+	t.Logf("Final result: %v", finResult)
+	t.Logf("Export key: %v", exportKey)
+}
