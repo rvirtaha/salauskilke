@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	router "salauskilke/internal"
 	"salauskilke/internal/generated/db"
+	"salauskilke/internal/utils"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -27,9 +29,18 @@ func main() {
 	q := db.New(conn)
 
 	
+	// Opaque auth setup
+	opaqueSetup, err := utils.OpaqueSetup()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	opaqueServer, err := opaqueSetup.Conf.Server()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Start Gin router
-	router := router.SetupRouter(q)
+	router := router.SetupRouter(q, opaqueServer, opaqueSetup)
 	if err := router.Run(":8080"); err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to start server: %v\n", err)
 		os.Exit(1)
