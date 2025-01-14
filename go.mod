@@ -8,6 +8,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.3
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 )
 
 require (
