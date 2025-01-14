@@ -13,6 +13,7 @@ type OpaqueSetupType struct {
 	ServerPrivateKey []byte
 	ServerPublicKey []byte
 	Conf *opaque.Configuration
+	Server *opaque.Server
 }
 
 func OpaqueSetup() (*OpaqueSetupType, error) {
@@ -45,6 +46,7 @@ func OpaqueSetup() (*OpaqueSetupType, error) {
 		ServerPrivateKey: serverPrivateKey,
 		ServerPublicKey: serverPublicKey,
 		Conf: conf,
+		Server: server,
 	}
 
 	return &out, nil
