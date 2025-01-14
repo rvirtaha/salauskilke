@@ -10,6 +10,10 @@ type PingRequest struct {
 	Message string `json:"message" binding:"omitempty"`
 }
 
+type PingResponse struct {
+	Message string `json:"message"`
+}
+
 func CreatePingHandler () gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req PingRequest
@@ -18,15 +22,6 @@ func CreatePingHandler () gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, req.Message)
+		ctx.JSON(http.StatusOK, &PingResponse{ Message: req.Message })
 	}
-}
-
-func RootHandler(c *gin.Context) {
-	c.HTML(http.StatusOK, "base.html", gin.H{
-		"DevMode": gin.Mode() != gin.ReleaseMode,
-	})
-}
-func HelloHandler(c *gin.Context) {
-	c.HTML(http.StatusOK, "hello.html", nil)
 }
