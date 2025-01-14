@@ -9,3 +9,7 @@ INSERT INTO app_user
 VALUES
     ($1, $2, $3)
 RETURNING *;
+
+-- name: GetUserByUsername :one
+SELECT * FROM app_user
+WHERE username = $1;

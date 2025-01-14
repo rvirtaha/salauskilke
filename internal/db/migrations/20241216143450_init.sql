@@ -13,6 +13,6 @@ ON app_user (username);
 
 -- migrate:down
 
-DROP INDEX app_user_username;
+DROP INDEX app_user_username_index;
 
 DROP TABLE app_user;

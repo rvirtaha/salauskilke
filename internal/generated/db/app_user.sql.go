@@ -33,6 +33,28 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (AppUser, error) {
 	return i, err
 }
 
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, registration_record, credential_identifier, username, created_at FROM app_user
+WHERE username = $1
+`
+
+// GetUserByUsername
+//
+//	SELECT id, registration_record, credential_identifier, username, created_at FROM app_user
+//	WHERE username = $1
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (AppUser, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i AppUser
+	err := row.Scan(
+		&i.ID,
+		&i.RegistrationRecord,
+		&i.CredentialIdentifier,
+		&i.Username,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertUser = `-- name: InsertUser :one
 INSERT INTO app_user 
     (registration_record, credential_identifier, username)
