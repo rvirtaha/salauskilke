@@ -3,6 +3,7 @@ module salauskilke
 go 1.22.0
 
 require (
+	github.com/bytemare/opaque v0.10.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-resty/resty/v2 v2.16.3
 	github.com/jackc/pgx/v5 v5.7.2
@@ -10,8 +11,14 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.0.0 // indirect
+	filippo.io/nistec v0.0.2 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect
 	github.com/bytedance/sonic/loader v0.2.1 // indirect
+	github.com/bytemare/crypto v0.4.3 // indirect
+	github.com/bytemare/hash v0.1.5 // indirect
+	github.com/bytemare/hash2curve v0.1.3 // indirect
+	github.com/bytemare/ksf v0.1.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -21,6 +28,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.23.0 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
+	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
