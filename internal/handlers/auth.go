@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"salauskilke/internal/generated/db"
@@ -127,6 +128,122 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 		}
 
 		// Respond with success and user details
+		ctx.JSON(http.StatusOK, responseBody)
+	}
+}
+
+
+type InitializeLoginRequest struct {
+	Username			string `form:"username" json:"username" xml:"username" binding:"required"`
+	KE1Message			string `form:"ke1_message" json:"ke1_message" xml:"ke1_message" binding:"required"`
+}
+
+type InitializeLoginResponse struct {
+	KE2Message string `json:"ke2_message"`
+}
+
+func CreateInitializeLoginHandler(q *db.Queries, opaqueServer *opaque.Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req InitializeLoginRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Parse and decode KE1 message
+		ke1Message, err := utils.DecodeBase64(req.KE1Message)
+		if err != nil {
+			log.Fatal(err)
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid KE1 message"})
+			return
+		}
+
+		ke1, err := opaqueServer.Deserialize.KE1(ke1Message)
+		if err != nil {
+			log.Fatal(err)
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Failed to deserialize KE1"})
+			return
+		}
+
+		// Fetch ClientRecord from database
+		appUser, err := q.GetUserByUsername(ctx, req.Username)
+		if err != nil {
+			log.Fatal(err)
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "Credential not found"})
+			return
+		}
+
+		// Deserialize the registration record from database
+		registrationRecord, err := opaqueServer.Deserialize.RegistrationRecord(appUser.RegistrationRecord)
+		if err != nil {
+			log.Fatal(err)
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Cannot deserialize opaque registration record found in database."})
+		}
+
+		// Perform server-side LoginInit
+		ke2, err := opaqueServer.LoginInit(ke1, &opaque.ClientRecord{
+			CredentialIdentifier: appUser.CredentialIdentifier,
+			ClientIdentity:       []byte(appUser.Username),
+			RegistrationRecord:   registrationRecord,
+		})
+		if err != nil {
+			log.Fatal(err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Login initialization failed"})
+			return
+		}
+
+		ke2Message := utils.EncodeBase64(ke2.Serialize())
+		responseBody := InitializeLoginResponse{
+			KE2Message: ke2Message,
+		}
+		ctx.JSON(http.StatusOK, responseBody)
+	}
+}
+
+type FinalizeLoginRequest struct {
+	KE3Message string `form:"ke3_message" json:"ke3_message" xml:"ke3_message" binding:"required"`
+}
+
+type FinalizeLoginResponse struct {
+	Status string `json:"status"`
+}
+
+func CreateFinalizeLoginHandler(opaqueServer *opaque.Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req FinalizeLoginRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Decode and deserialize KE3
+		ke3Message, err := utils.DecodeBase64(req.KE3Message)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid KE3 message"})
+			return
+		}
+
+		ke3, err := opaqueServer.Deserialize.KE3(ke3Message)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Failed to deserialize KE3"})
+			return
+		}
+
+		// Finalize login
+		if err := opaqueServer.LoginFinish(ke3); err != nil {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Login failed"})
+			return
+		}
+
+		// Generate and send a session token (e.g., JWT)
+		sessionKey := opaqueServer.SessionKey()
+
+		fmt.Println(sessionKey)
+
+		responseBody := FinalizeLoginResponse{
+			Status: "success",
+		}
+
 		ctx.JSON(http.StatusOK, responseBody)
 	}
 }

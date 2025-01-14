@@ -4,15 +4,13 @@ import (
 	"salauskilke/internal/generated/db"
 	"salauskilke/internal/utils"
 
-	"github.com/bytemare/opaque"
 	"github.com/gin-gonic/gin"
 
 	"salauskilke/internal/handlers"
 )
 
 func SetupRouter(
-		q *db.Queries, 
-		opaqueServer *opaque.Server, 
+		q *db.Queries,
 		opaqueSetup *utils.OpaqueSetupType,
 	) *gin.Engine {
 	
@@ -22,8 +20,10 @@ func SetupRouter(
 	api := engine.Group("/api")
 	{
 		api.POST("/ping", handlers.CreatePingHandler())
-		api.POST("/register/initialize", handlers.CreateInitializeRegistrationHandler(q, opaqueServer, opaqueSetup))
-		api.POST("/register/finalize", handlers.CreateFinalizeRegistrationHandler(q, opaqueServer))
+		api.POST("/register/initialize", handlers.CreateInitializeRegistrationHandler(q, opaqueSetup.Server, opaqueSetup))
+		api.POST("/register/finalize", handlers.CreateFinalizeRegistrationHandler(q, opaqueSetup.Server))
+		api.POST("/login/initialize", handlers.CreateInitializeLoginHandler(q, opaqueSetup.Server))
+		api.POST("/login/finalize", handlers.CreateFinalizeLoginHandler(opaqueSetup.Server))
 	}
 
 	return engine
