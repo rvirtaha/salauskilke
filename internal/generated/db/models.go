@@ -9,11 +9,9 @@ import (
 )
 
 type AppUser struct {
-	ID                  int32
-	Username            string
-	PasswordHash        string
-	PublicKey           []byte
-	EncryptionSalt      []byte
-	EncryptedPrivateKey []byte
-	CreatedAt           pgtype.Timestamp
+	ID                   int32
+	RegistrationRecord   []byte
+	CredentialIdentifier []byte
+	Username             string
+	CreatedAt            pgtype.Timestamp
 }

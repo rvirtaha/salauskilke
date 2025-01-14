@@ -19,11 +19,9 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.app_user (
     id integer NOT NULL,
+    registration_record bytea NOT NULL,
+    credential_identifier bytea NOT NULL,
     username text NOT NULL,
-    password_hash text NOT NULL,
-    public_key bytea NOT NULL,
-    encryption_salt bytea NOT NULL,
-    encrypted_private_key bytea NOT NULL,
     created_at timestamp without time zone DEFAULT now()
 );
 
@@ -86,6 +84,13 @@ ALTER TABLE ONLY public.app_user
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: app_user_username_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX app_user_username_index ON public.app_user USING btree (username);
 
 
 --

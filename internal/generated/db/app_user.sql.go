@@ -10,14 +10,14 @@ import (
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, password_hash, public_key, encryption_salt, encrypted_private_key, created_at
+SELECT id, registration_record, credential_identifier, username, created_at
 FROM app_user
 WHERE id = $1
 `
 
 // GetUserByID
 //
-//	SELECT id, username, password_hash, public_key, encryption_salt, encrypted_private_key, created_at
+//	SELECT id, registration_record, credential_identifier, username, created_at
 //	FROM app_user
 //	WHERE id = $1
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (AppUser, error) {
@@ -25,11 +25,9 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (AppUser, error) {
 	var i AppUser
 	err := row.Scan(
 		&i.ID,
+		&i.RegistrationRecord,
+		&i.CredentialIdentifier,
 		&i.Username,
-		&i.PasswordHash,
-		&i.PublicKey,
-		&i.EncryptionSalt,
-		&i.EncryptedPrivateKey,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -37,43 +35,33 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (AppUser, error) {
 
 const insertUser = `-- name: InsertUser :one
 INSERT INTO app_user 
-    (username, password_hash, public_key, encryption_salt, encrypted_private_key)
+    (registration_record, credential_identifier, username)
 VALUES
-    ($1, $2, $3, $4, $5)
-RETURNING id, username, password_hash, public_key, encryption_salt, encrypted_private_key, created_at
+    ($1, $2, $3)
+RETURNING id, registration_record, credential_identifier, username, created_at
 `
 
 type InsertUserParams struct {
-	Username            string
-	PasswordHash        string
-	PublicKey           []byte
-	EncryptionSalt      []byte
-	EncryptedPrivateKey []byte
+	RegistrationRecord   []byte
+	CredentialIdentifier []byte
+	Username             string
 }
 
 // InsertUser
 //
 //	INSERT INTO app_user
-//	    (username, password_hash, public_key, encryption_salt, encrypted_private_key)
+//	    (registration_record, credential_identifier, username)
 //	VALUES
-//	    ($1, $2, $3, $4, $5)
-//	RETURNING id, username, password_hash, public_key, encryption_salt, encrypted_private_key, created_at
+//	    ($1, $2, $3)
+//	RETURNING id, registration_record, credential_identifier, username, created_at
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (AppUser, error) {
-	row := q.db.QueryRow(ctx, insertUser,
-		arg.Username,
-		arg.PasswordHash,
-		arg.PublicKey,
-		arg.EncryptionSalt,
-		arg.EncryptedPrivateKey,
-	)
+	row := q.db.QueryRow(ctx, insertUser, arg.RegistrationRecord, arg.CredentialIdentifier, arg.Username)
 	var i AppUser
 	err := row.Scan(
 		&i.ID,
+		&i.RegistrationRecord,
+		&i.CredentialIdentifier,
 		&i.Username,
-		&i.PasswordHash,
-		&i.PublicKey,
-		&i.EncryptionSalt,
-		&i.EncryptedPrivateKey,
 		&i.CreatedAt,
 	)
 	return i, err

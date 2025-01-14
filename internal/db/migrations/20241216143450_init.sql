@@ -1,16 +1,18 @@
 -- migrate:up
 
 CREATE TABLE app_user (
-    id SERIAL PRIMARY KEY,                 -- Unique identifier for each user
-    username TEXT NOT NULL UNIQUE,         -- Username for login
-    password_hash TEXT NOT NULL,           -- Hashed and salted password (Argon2id) (Contains the salt and rounds)
-    public_key BYTEA NOT NULL,             -- User's RSA public key
-    encryption_salt BYTEA NOT NULL,        -- Salt used for deriving the AES encryption key
-    encrypted_private_key BYTEA NOT NULL,  -- Encrypted RSA private key
-    created_at TIMESTAMP DEFAULT NOW()    -- Timestamp for user creation
+    id SERIAL PRIMARY KEY,                  -- db primary key
+    registration_record BYTEA NOT NULL,     -- OPAQUE client registration record
+    credential_identifier BYTEA NOT NULL,   -- OPAQUE credential id
+    username TEXT NOT NULL UNIQUE,          -- OPAQUE client identity, also username for login
+    created_at TIMESTAMP DEFAULT NOW()      -- Timestamp for user creation
 );
+
+CREATE INDEX app_user_username_index
+ON app_user (username);
 
 -- migrate:down
 
-DROP TABLE app_user;
+DROP INDEX app_user_username;
 
+DROP TABLE app_user;

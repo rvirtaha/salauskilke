@@ -22,6 +22,8 @@ func SetupRouter(
 	api := engine.Group("/api")
 	{
 		api.POST("/ping", handlers.CreatePingHandler())
+		api.POST("/register/initialize", handlers.CreateInitializeRegistrationHandler(q, opaqueServer, opaqueSetup))
+		api.POST("/register/finalize", handlers.CreateFinalizeRegistrationHandler(q, opaqueServer))
 	}
 
 	return engine
