@@ -62,6 +62,8 @@ func TestAuthHandlers(t *testing.T) {
 		var (
 			password string = "password"
 			clientID string = "username" + test_utils.RandStringRunes(8)
+			registrationExportKey []byte
+			loginExportKey 		  []byte
 		)
 
 		// register
@@ -106,13 +108,13 @@ func TestAuthHandlers(t *testing.T) {
 			credID, err  := utils.DecodeBase64(initResponse.CredentialID); 								assert.NoError(t, err)
 			registrationResponse, err := client.Deserialize.RegistrationResponse(responseMessage); 	assert.NoError(t, err)
 
-			// registrationRecord, exportKey := ...
-			registrationRecord, _ := client.RegistrationFinalize(registrationResponse, opaque.ClientRegistrationFinalizeOptions{
+			registrationRecord, exportKey := client.RegistrationFinalize(registrationResponse, opaque.ClientRegistrationFinalizeOptions{
 				ClientIdentity: []byte(clientID),
 				ServerIdentity: serverID,
 			})
 			serializedRecord := utils.EncodeBase64(registrationRecord.Serialize())
 			serializedCredID := utils.EncodeBase64(credID)
+			registrationExportKey = exportKey
 
 			finPayload := handlers.FinalizeRegistrationRequest{
 				Username: clientID,
@@ -141,7 +143,7 @@ func TestAuthHandlers(t *testing.T) {
 			err = json.Unmarshal(recorder.Body.Bytes(), &finResponse)
 			assert.NoError(t, err)
 
-			t.Log(finResponse)
+			t.Logf("FinalizeRegistrationResponse:\n\t%+v", finResponse)
 
 		}
 
@@ -190,12 +192,14 @@ func TestAuthHandlers(t *testing.T) {
 			ke2, err := client.Deserialize.KE2(ke2Message)
 			assert.NoError(t, err)
 
-			// ke3, exportKey := ...
-			ke3, _, err := client.LoginFinish(ke2, opaque.ClientLoginFinishOptions{
+			ke3, exportKey, err := client.LoginFinish(ke2, opaque.ClientLoginFinishOptions{
 				ClientIdentity: []byte(clientID),
 				ServerIdentity: serverID,
 			})
 			assert.NoError(t, err)
+			loginExportKey = exportKey
+
+			// t.Logf(utils.EncodeBase64(client.SessionKey()))
 
 			finPayload := handlers.FinalizeLoginRequest{
 				KE3Message: utils.EncodeBase64(ke3.Serialize()),
@@ -222,8 +226,10 @@ func TestAuthHandlers(t *testing.T) {
 			err = json.Unmarshal(recorder.Body.Bytes(), &finResponse)
 			assert.NoError(t, err)
 
-			t.Log(finResponse)
-
+			// Verify registration and login export keys are the same
+			assert.True(t, bytes.Equal(loginExportKey, registrationExportKey), "The export keys should match.")
+			
+			t.Logf("FinalizeLoginResponse:\n\t%+v", finResponse)
 		}
 
 	}
