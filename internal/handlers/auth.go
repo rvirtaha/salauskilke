@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"salauskilke/internal/generated/db"
 	"salauskilke/internal/utils"
-	"time"
 
 	"github.com/bytemare/opaque"
 
@@ -81,7 +79,6 @@ type FinalizeRegistrationResponse struct {
 	Message string `json:"message"`
 	UserID int32 `json:"user_id"`
 	Username string `json:"username"`
-	Created_at string `json:"created_at"`
 }
 
 func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Server) gin.HandlerFunc {
@@ -99,6 +96,14 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 		    return
 		}
 
+		credentialIdentifier, err := utils.DecodeBase64(req.CredentialID)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
+			return
+		}
+
+		clientIdentity := []byte(req.Username)
+
 		// Deserialize the client's registration record
 		_, err = opaqueServer.Deserialize.RegistrationRecord(registrationRecord)
 		if err != nil {
@@ -108,9 +113,9 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 	
 		// Save to the database
 		userParams := db.InsertUserParams{
-			Username: req.Username,
-			RegistrationRecord: registrationRecord,
-			CredentialIdentifier: []byte(req.CredentialID),
+			CredentialIdentifier: credentialIdentifier,
+			ClientIdentity: clientIdentity,
+			SerializedRegistrationRecord: registrationRecord,
 		}
 
 		appUser, err := q.InsertUser(ctx, userParams)
@@ -123,8 +128,7 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 		responseBody := FinalizeRegistrationResponse{
 			Message: "Registration successful",
 			UserID: appUser.ID,
-			Username: appUser.Username,
-			Created_at: appUser.CreatedAt.Time.Format(time.DateTime),
+			Username: string(appUser.ClientIdentity),
 		}
 
 		// Respond with success and user details
@@ -166,15 +170,15 @@ func CreateInitializeLoginHandler(q *db.Queries, opaqueServer *opaque.Server) gi
 		}
 
 		// Fetch ClientRecord from database
-		appUser, err := q.GetUserByUsername(ctx, req.Username)
+		appUser, err := q.GetUserByUsername(ctx, []byte(req.Username))
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("%+v", err)
 			ctx.JSON(http.StatusNotFound, gin.H{"error": "Credential not found"})
 			return
 		}
 
 		// Deserialize the registration record from database
-		registrationRecord, err := opaqueServer.Deserialize.RegistrationRecord(appUser.RegistrationRecord)
+		registrationRecord, err := opaqueServer.Deserialize.RegistrationRecord(appUser.SerializedRegistrationRecord)
 		if err != nil {
 			log.Fatal(err)
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Cannot deserialize opaque registration record found in database."})
@@ -183,7 +187,7 @@ func CreateInitializeLoginHandler(q *db.Queries, opaqueServer *opaque.Server) gi
 		// Perform server-side LoginInit
 		ke2, err := opaqueServer.LoginInit(ke1, &opaque.ClientRecord{
 			CredentialIdentifier: appUser.CredentialIdentifier,
-			ClientIdentity:       []byte(appUser.Username),
+			ClientIdentity:       appUser.ClientIdentity,
 			RegistrationRecord:   registrationRecord,
 		})
 		if err != nil {
@@ -236,9 +240,8 @@ func CreateFinalizeLoginHandler(opaqueServer *opaque.Server) gin.HandlerFunc {
 		}
 
 		// Generate and send a session token (e.g., JWT)
-		sessionKey := opaqueServer.SessionKey()
-
-		fmt.Println(sessionKey)
+		// sessionKey := opaqueServer.SessionKey()
+		// fmt.Println(utils.EncodeBase64(sessionKey))
 
 		responseBody := FinalizeLoginResponse{
 			Status: "success",

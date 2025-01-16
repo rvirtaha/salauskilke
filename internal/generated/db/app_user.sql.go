@@ -10,14 +10,14 @@ import (
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, registration_record, credential_identifier, username, created_at
+SELECT id, credential_identifier, client_identity, serialized_registration_record
 FROM app_user
 WHERE id = $1
 `
 
 // GetUserByID
 //
-//	SELECT id, registration_record, credential_identifier, username, created_at
+//	SELECT id, credential_identifier, client_identity, serialized_registration_record
 //	FROM app_user
 //	WHERE id = $1
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (AppUser, error) {
@@ -25,66 +25,63 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (AppUser, error) {
 	var i AppUser
 	err := row.Scan(
 		&i.ID,
-		&i.RegistrationRecord,
 		&i.CredentialIdentifier,
-		&i.Username,
-		&i.CreatedAt,
+		&i.ClientIdentity,
+		&i.SerializedRegistrationRecord,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, registration_record, credential_identifier, username, created_at FROM app_user
-WHERE username = $1
+SELECT id, credential_identifier, client_identity, serialized_registration_record FROM app_user
+WHERE client_identity = $1
 `
 
 // GetUserByUsername
 //
-//	SELECT id, registration_record, credential_identifier, username, created_at FROM app_user
-//	WHERE username = $1
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (AppUser, error) {
-	row := q.db.QueryRow(ctx, getUserByUsername, username)
+//	SELECT id, credential_identifier, client_identity, serialized_registration_record FROM app_user
+//	WHERE client_identity = $1
+func (q *Queries) GetUserByUsername(ctx context.Context, clientIdentity []byte) (AppUser, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, clientIdentity)
 	var i AppUser
 	err := row.Scan(
 		&i.ID,
-		&i.RegistrationRecord,
 		&i.CredentialIdentifier,
-		&i.Username,
-		&i.CreatedAt,
+		&i.ClientIdentity,
+		&i.SerializedRegistrationRecord,
 	)
 	return i, err
 }
 
 const insertUser = `-- name: InsertUser :one
 INSERT INTO app_user 
-    (registration_record, credential_identifier, username)
+    (credential_identifier, client_identity, serialized_registration_record)
 VALUES
     ($1, $2, $3)
-RETURNING id, registration_record, credential_identifier, username, created_at
+RETURNING id, credential_identifier, client_identity, serialized_registration_record
 `
 
 type InsertUserParams struct {
-	RegistrationRecord   []byte
-	CredentialIdentifier []byte
-	Username             string
+	CredentialIdentifier         []byte
+	ClientIdentity               []byte
+	SerializedRegistrationRecord []byte
 }
 
 // InsertUser
 //
 //	INSERT INTO app_user
-//	    (registration_record, credential_identifier, username)
+//	    (credential_identifier, client_identity, serialized_registration_record)
 //	VALUES
 //	    ($1, $2, $3)
-//	RETURNING id, registration_record, credential_identifier, username, created_at
+//	RETURNING id, credential_identifier, client_identity, serialized_registration_record
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (AppUser, error) {
-	row := q.db.QueryRow(ctx, insertUser, arg.RegistrationRecord, arg.CredentialIdentifier, arg.Username)
+	row := q.db.QueryRow(ctx, insertUser, arg.CredentialIdentifier, arg.ClientIdentity, arg.SerializedRegistrationRecord)
 	var i AppUser
 	err := row.Scan(
 		&i.ID,
-		&i.RegistrationRecord,
 		&i.CredentialIdentifier,
-		&i.Username,
-		&i.CreatedAt,
+		&i.ClientIdentity,
+		&i.SerializedRegistrationRecord,
 	)
 	return i, err
 }

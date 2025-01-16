@@ -19,10 +19,9 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.app_user (
     id integer NOT NULL,
-    registration_record bytea NOT NULL,
     credential_identifier bytea NOT NULL,
-    username text NOT NULL,
-    created_at timestamp without time zone DEFAULT now()
+    client_identity bytea NOT NULL,
+    serialized_registration_record bytea NOT NULL
 );
 
 
@@ -71,14 +70,6 @@ ALTER TABLE ONLY public.app_user
 
 
 --
--- Name: app_user app_user_username_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.app_user
-    ADD CONSTRAINT app_user_username_key UNIQUE (username);
-
-
---
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -87,10 +78,10 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: app_user_username_index; Type: INDEX; Schema: public; Owner: -
+-- Name: app_user_client_identity_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX app_user_username_index ON public.app_user USING btree (username);
+CREATE INDEX app_user_client_identity_index ON public.app_user USING btree (client_identity);
 
 
 --

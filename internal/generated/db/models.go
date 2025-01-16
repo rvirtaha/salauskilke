@@ -4,14 +4,9 @@
 
 package db
 
-import (
-	"github.com/jackc/pgx/v5/pgtype"
-)
-
 type AppUser struct {
-	ID                   int32
-	RegistrationRecord   []byte
-	CredentialIdentifier []byte
-	Username             string
-	CreatedAt            pgtype.Timestamp
+	ID                           int32
+	CredentialIdentifier         []byte
+	ClientIdentity               []byte
+	SerializedRegistrationRecord []byte
 }
