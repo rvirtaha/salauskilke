@@ -17,22 +17,22 @@ type InitializeRegistrationRequest struct {
 
 type InitializeRegistrationResponse struct {
 	ResponseMessage string `json:"response_message"` // unpadded, url-encoded base64 []byte
-	CredentialID string `json:"credential_id"` // unpadded, url-encoded base64 []byte
+	CredentialID    string `json:"credential_id"`    // unpadded, url-encoded base64 []byte
 }
 
-func CreateInitializeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Server, opaqueSetup *utils.OpaqueSetupType) gin.HandlerFunc {
+func CreateInitializeRegistrationHandler(q *db.Queries, opaqueServer *opaque.Server, opaqueSetup *utils.OpaqueSetupType) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req InitializeRegistrationRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		
+
 		// Parse URL-encoded base64 message from client
 		registrationRequest, err := utils.DecodeBase64(req.RegistrationMessage)
 		if err != nil {
-		    ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
-		    return
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
+			return
 		}
 
 		// Deserialize the client's registration request
@@ -53,11 +53,11 @@ func CreateInitializeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Se
 		// Create the server's registration response
 		response := opaqueServer.RegistrationResponse(opaqueRegRequest, pks, credID, opaqueSetup.SecretOprfSeed)
 		responseMessage := response.Serialize()
-		
+
 		// Encode to unpadded, URL-safe Base64
 		encodedResponseMessage := utils.EncodeBase64(responseMessage)
 		encodedCredID := utils.EncodeBase64(credID)
-		
+
 		responseBody := InitializeRegistrationResponse{
 			ResponseMessage: encodedResponseMessage,
 			CredentialID:    encodedCredID,
@@ -70,18 +70,18 @@ func CreateInitializeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Se
 }
 
 type FinalizeRegistrationRequest struct {
-	Username       		string `form:"username" json:"username" xml:"username" binding:"required"`
-	RegistrationRecord 	string `form:"registration_record" json:"registration_record" xml:"registration_record" binding:"required"`
-	CredentialID 		string `form:"credential_id" json:"credential_id" xml:"credential_id" binding:"required"`
+	Username           string `form:"username" json:"username" xml:"username" binding:"required"`
+	RegistrationRecord string `form:"registration_record" json:"registration_record" xml:"registration_record" binding:"required"`
+	CredentialID       string `form:"credential_id" json:"credential_id" xml:"credential_id" binding:"required"`
 }
 
 type FinalizeRegistrationResponse struct {
-	Message string `json:"message"`
-	UserID int32 `json:"user_id"`
+	Message  string `json:"message"`
+	UserID   int32  `json:"user_id"`
 	Username string `json:"username"`
 }
 
-func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Server) gin.HandlerFunc {
+func CreateFinalizeRegistrationHandler(q *db.Queries, opaqueServer *opaque.Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req FinalizeRegistrationRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -92,8 +92,8 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 		// Parse URL-encoded base64 message from client
 		registrationRecord, err := utils.DecodeBase64(req.RegistrationRecord)
 		if err != nil {
-		    ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
-		    return
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
+			return
 		}
 
 		credentialIdentifier, err := utils.DecodeBase64(req.CredentialID)
@@ -110,11 +110,11 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid opaque registration record"})
 			return
 		}
-	
+
 		// Save to the database
 		userParams := db.InsertUserParams{
-			CredentialIdentifier: credentialIdentifier,
-			ClientIdentity: clientIdentity,
+			CredentialIdentifier:         credentialIdentifier,
+			ClientIdentity:               clientIdentity,
 			SerializedRegistrationRecord: registrationRecord,
 		}
 
@@ -124,10 +124,10 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save registration data"})
 			return
 		}
-		
+
 		responseBody := FinalizeRegistrationResponse{
-			Message: "Registration successful",
-			UserID: appUser.ID,
+			Message:  "Registration successful",
+			UserID:   appUser.ID,
 			Username: string(appUser.ClientIdentity),
 		}
 
@@ -136,10 +136,9 @@ func CreateFinalizeRegistrationHandler (q *db.Queries, opaqueServer *opaque.Serv
 	}
 }
 
-
 type InitializeLoginRequest struct {
-	Username			string `form:"username" json:"username" xml:"username" binding:"required"`
-	KE1Message			string `form:"ke1_message" json:"ke1_message" xml:"ke1_message" binding:"required"`
+	Username   string `form:"username" json:"username" xml:"username" binding:"required"`
+	KE1Message string `form:"ke1_message" json:"ke1_message" xml:"ke1_message" binding:"required"`
 }
 
 type InitializeLoginResponse struct {
@@ -185,11 +184,17 @@ func CreateInitializeLoginHandler(q *db.Queries, opaqueServer *opaque.Server) gi
 		}
 
 		// Perform server-side LoginInit
-		ke2, err := opaqueServer.LoginInit(ke1, &opaque.ClientRecord{
-			CredentialIdentifier: appUser.CredentialIdentifier,
-			ClientIdentity:       appUser.ClientIdentity,
-			RegistrationRecord:   registrationRecord,
-		})
+		ke2, err := opaqueServer.LoginInit(
+			ke1,
+			&opaque.ClientRecord{
+				CredentialIdentifier: appUser.CredentialIdentifier,
+				ClientIdentity:       appUser.ClientIdentity,
+				RegistrationRecord:   registrationRecord,
+			},
+			opaque.ServerLoginInitOptions{
+				EphemeralSecretKey: opaque.P256Sha256.Group().HashToScalar([]byte("input"), []byte("dstlongerthan16bytes")),
+			},
+		)
 		if err != nil {
 			log.Fatal(err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Login initialization failed"})
@@ -248,5 +253,19 @@ func CreateFinalizeLoginHandler(opaqueServer *opaque.Server) gin.HandlerFunc {
 		}
 
 		ctx.JSON(http.StatusOK, responseBody)
+	}
+}
+
+type OpaqueConfResponse struct {
+	SerializedConf string `json:"serialized_conf"`
+	ServerID       string `json:"server_id"`
+}
+
+func CreateGetOpaqueConfHandler(opaqueSetup *utils.OpaqueSetupType) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, OpaqueConfResponse{
+			SerializedConf: utils.EncodeBase64(opaqueSetup.Conf.Serialize()),
+			ServerID:       utils.EncodeBase64(opaqueSetup.ServerID),
+		})
 	}
 }

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 
@@ -50,4 +51,17 @@ func OpaqueSetup() (*OpaqueSetupType, error) {
 	}
 
 	return &out, nil
+}
+
+func IsSameOpaqueConf(a, b *opaque.Configuration) bool {
+	if a.OPRF != b.OPRF ||
+		a.KDF != b.KDF ||
+		a.MAC != b.MAC ||
+		a.Hash != b.Hash ||
+		a.KSF != b.KSF ||
+		a.AKE != b.AKE {
+		return false
+	}
+
+	return bytes.Equal(a.Context, b.Context)
 }

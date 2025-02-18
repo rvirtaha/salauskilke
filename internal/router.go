@@ -24,6 +24,7 @@ func SetupRouter(
 		api.POST("/register/finalize", handlers.CreateFinalizeRegistrationHandler(q, opaqueSetup.Server))
 		api.POST("/login/initialize", handlers.CreateInitializeLoginHandler(q, opaqueSetup.Server))
 		api.POST("/login/finalize", handlers.CreateFinalizeLoginHandler(opaqueSetup.Server))
+		api.GET("/opaqueconf", handlers.CreateGetOpaqueConfHandler(opaqueSetup))
 	}
 
 	return engine
