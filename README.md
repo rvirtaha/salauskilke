@@ -46,4 +46,7 @@ Decrypted secrets only ever exist on a client device. At no point is there enoug
 
 ## Development
 
-...
+### Setup
+
+[vscode rust setup](https://www.youtube.com/watch?v=ZhedgZtd8gw)
+
