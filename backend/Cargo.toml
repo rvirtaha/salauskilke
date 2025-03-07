@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+argon2 = "0.5.3"
 axum = { version = "0.8.1", features = ["macros", "tokio"] }
 dotenv = "0.15.0"
 envconfig = "0.11.0"
+generic-array = "0.14"
+hex = "0.4.3"
 opaque-ke = { version = "3.0.0", features = [
     "argon2",
     "serde",

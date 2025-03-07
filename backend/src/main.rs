@@ -1,14 +1,14 @@
+#![allow(unused)] // TODO remove this and fix the warnings
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![deny(unused_must_use)]
 
-mod controllers;
-mod http;
-mod models;
-mod utils;
+pub mod controllers;
+pub mod http;
+pub mod models;
+pub mod utils;
 
-use controllers::Controllers;
 use dotenv::dotenv;
 use envconfig::Envconfig;
 use models::Models;
@@ -25,7 +25,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sqlx::migrate!("db/migrations").run(&pool).await?;
 
     let models = Models::new(pool);
-    let services = Controllers::new();
 
     http::serve(config).await?;
 

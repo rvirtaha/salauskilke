@@ -144,9 +144,12 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
+ "argon2",
  "axum",
  "dotenv",
  "envconfig",
+ "generic-array",
+ "hex",
  "opaque-ke",
  "serde",
  "sqlx",
