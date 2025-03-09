@@ -92,8 +92,6 @@ impl<R: RngCore + CryptoRng> OpaqueController<R> {
             .get(&username)
             .ok_or(ProtocolError::InvalidLoginError)?; // TODO
 
-        println!("{:?}", password_file);
-
         let record = ServerRegistration::<CS>::deserialize(password_file)?;
 
         let server_login_start_result = ServerLogin::start(
@@ -180,14 +178,14 @@ mod tests {
                 ClientRegistrationFinishParameters::default(),
             )
             .unwrap();
-        let registration_finish = client_registration_finish.message.serialize();
+        let password_file = client_registration_finish.message.serialize();
 
         // Server finalizes registration
         opaque_controller
-            .register_finish(username, registration_finish)
+            .register_finish(username, password_file)
             .unwrap();
 
-        registration_finish
+        password_file
     }
 
     fn login<R: RngCore + CryptoRng>(
@@ -229,6 +227,15 @@ mod tests {
         opaque_controller
             .login_finish(username, credential_finalization_bytes)
             .unwrap();
+
+        assert_eq!(
+            "7227e3a1ca503c4a69784253ec3b3dcc1cf04be53b671b0fc7dd8bf18510ab447898a8f25aa9ebc9865ba7e7ef3b41bbe8f4413f532e223197160e1b7f750fd7",
+            generic_array_to_hex(&client_login_finish.session_key)
+        );
+        assert_eq!(
+            "90ff2ccfcc7dc97c038ac08198a69cf3106534343687bda5eef2d9587b6153302dacb886df251da4db26d42d8c576653ca54be075fb103f52826bcd62ef0b49d",
+            generic_array_to_hex(&client_login_finish.export_key)
+        );
     }
 
     fn example_register<R: RngCore + CryptoRng>(
@@ -354,7 +361,7 @@ mod tests {
         let mut server_rng = StdRng::from_seed([0u8; 32]);
         let mut client_rng = StdRng::from_seed([1u8; 32]);
 
-        let server_registration = register(
+        let password_file = register(
             USERNAME.to_string(),
             PASSWORD.to_string(),
             client_rng.clone(),
@@ -363,13 +370,13 @@ mod tests {
 
         assert_eq!(
             "620b9523e88a09cfa48bba1dda237bffd4db67c8806391def6d1f0f542b4f25df6ef552c1fd6f3b152fffa4cda4f63cf699a6e306d66742d4277c97ad84d4c2ffdf47dd7aa2d8992f6fd12b19482d75a4dd1915f51da1248e62548c1f08d77b33b713e9f2aff1b587314ba32d65b90fdfb58a4b4783b18c099ef2a95397c4375fd82ed9cede97b0bcfb7a56a1bdfa6e9ab535f2b28f381539e645cf470292209140d8310cb2638faa1b600fff49c69c7511d1a6d78d2f0251031f724324ae00b", 
-            generic_array_to_hex(&server_registration)
+            generic_array_to_hex(&password_file)
         );
 
         login(
             USERNAME.to_string(),
             PASSWORD.to_string(),
-            server_registration,
+            password_file,
             client_rng,
             server_rng,
         );
