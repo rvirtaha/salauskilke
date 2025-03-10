@@ -1,0 +1,11 @@
+{
+    "recommendations": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "ms-azuretools.vscode-docker",
+        "fill-labs.dependi",
+        "usernamehw.errorlens",
+        "aaron-bond.better-comments"
+    ]
+}
