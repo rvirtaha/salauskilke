@@ -1,24 +1,16 @@
 use argon2::Argon2;
-use axum::Error;
 use generic_array::GenericArray;
 use opaque_ke::ciphersuite::CipherSuite;
 use opaque_ke::errors::ProtocolError;
 use opaque_ke::rand::rngs::OsRng;
 use opaque_ke::rand::{CryptoRng, RngCore};
 use opaque_ke::{
-    ClientLogin, ClientLoginFinishParameters, ClientRegistration,
-    ClientRegistrationFinishParameters, CredentialFinalization, CredentialFinalizationLen,
-    CredentialRequest, CredentialRequestLen, CredentialResponse, CredentialResponseLen,
-    RegistrationRequest, RegistrationRequestLen, RegistrationResponse, RegistrationResponseLen,
-    RegistrationUpload, RegistrationUploadLen, ServerLogin, ServerLoginFinishResult,
-    ServerLoginStartParameters, ServerLoginStartResult, ServerRegistration, ServerRegistrationLen,
-    ServerSetup,
+    CredentialFinalization, CredentialFinalizationLen, CredentialRequest, CredentialRequestLen,
+    CredentialResponseLen, RegistrationRequest, RegistrationRequestLen, RegistrationResponseLen,
+    RegistrationUpload, RegistrationUploadLen, ServerLogin, ServerLoginStartParameters,
+    ServerLoginStartResult, ServerRegistration, ServerRegistrationLen, ServerSetup,
 };
-use serde::de::IntoDeserializer;
-use serde::Serialize;
 use std::collections::HashMap;
-
-type PasswordFile = ServerRegistration<CS>;
 
 pub struct CS;
 
@@ -123,7 +115,7 @@ impl<R: RngCore + CryptoRng> OpaqueController<R> {
         let credential_finalization =
             CredentialFinalization::deserialize(&credential_finalization_bytes)?;
 
-        let server_login_finish_result = server_login_start_result
+        server_login_start_result
             .state
             .finish(credential_finalization)?;
 
@@ -140,6 +132,10 @@ mod tests {
     use hex::encode;
     use opaque_ke::rand::rngs::StdRng;
     use opaque_ke::rand::SeedableRng;
+    use opaque_ke::{
+        ClientLogin, ClientLoginFinishParameters, ClientRegistration,
+        ClientRegistrationFinishParameters, CredentialResponse, RegistrationResponse,
+    };
 
     const PASSWORD: &str = "salasana123";
     const USERNAME: &str = "john.doe@example.com";
@@ -154,7 +150,7 @@ mod tests {
         username: String,
         password: String,
         mut client_rng: R,
-        mut server_rng: R,
+        server_rng: R,
     ) -> GenericArray<u8, ServerRegistrationLen<CS>> {
         let mut opaque_controller = OpaqueController::new(server_rng);
 
@@ -193,7 +189,7 @@ mod tests {
         password: String,
         password_file_bytes: GenericArray<u8, ServerRegistrationLen<CS>>,
         mut client_rng: R,
-        mut server_rng: R,
+        server_rng: R,
     ) {
         let mut opaque_controller = OpaqueController::new(server_rng);
         opaque_controller
@@ -243,7 +239,6 @@ mod tests {
         password: String,
         server_setup: &ServerSetup<CS>,
         mut client_rng: R,
-        mut server_rng: R,
     ) -> GenericArray<u8, ServerRegistrationLen<CS>> {
         let client_registration_start_result =
             ClientRegistration::<CS>::start(&mut client_rng, password.as_bytes()).unwrap();
@@ -343,23 +338,13 @@ mod tests {
             .finish(CredentialFinalization::deserialize(&credential_finalization_bytes).unwrap())
             .unwrap();
 
-        // assert_eq!(
-        //     "d0e855aef328eddd4934e9dc98027c985750fbb6a6c117297bbbdf415697e81422267398fec85f09efad2e42951d56a204f877bc6b678dee04a37b59cb5bc7e856a50937ab14dff8bb5b3c2da82eb757b6c5bdc7bd045fa6c83af7609a71b809",
-        //     generic_array_to_hex(&credential_request_bytes)
-        // );
-
-        // assert_eq!(
-        //     "9825516c58ab90fa5eeee174203e3618dca5499214b7f937b79d1aad08ea321471fd9e51dfd366375a83e13311636cba849533b2a4372243d7ef42b6cfed6ec004a391900398ccac5cb15c81f39d98aef47be0eeef4ce99a361c28ae5ece95a5220f1b8f9478f04b7f217a98701ebb5c032548afddb33fcf04b83f9f54fff508e146a33a755ce91a8ede7ed61065184c970070ea0d8626d046ae12909bca0875fa9c91d45b7c676f7a00840f5eaef340eb0609109b931ae54544b1cfc4f1006f003889a079646a9be8ba4fff459af7a94a250b7bfe16544a97d28ca58033b2b3bc8f3490a739e8a7449fd7f395b01ea6e8fa7fb86df0f36dfd2e3b9e29e78a0645de0ae3589461cb7a15504d716b597dc0d9c7b099f8742accb22a60da9d01ef020511e682a5d3227f1c1087e6ce3c41d5549e99826c942b95dc293835942535",
-        //     generic_array_to_hex(&credential_response_bytes)
-        // );
-
         client_login_finish_result.session_key == server_login_finish_result.session_key
     }
 
     #[test]
     fn my_test() {
-        let mut server_rng = StdRng::from_seed([0u8; 32]);
-        let mut client_rng = StdRng::from_seed([1u8; 32]);
+        let server_rng = StdRng::from_seed([0u8; 32]);
+        let client_rng = StdRng::from_seed([1u8; 32]);
 
         let password_file = register(
             USERNAME.to_string(),
@@ -385,15 +370,14 @@ mod tests {
     #[test]
     fn test_example() {
         let mut server_rng = StdRng::from_seed([0u8; 32]);
-        let mut client_rng = StdRng::from_seed([1u8; 32]);
-        let mut server_setup = ServerSetup::<CS>::new(&mut server_rng);
+        let client_rng = StdRng::from_seed([1u8; 32]);
+        let server_setup = ServerSetup::<CS>::new(&mut server_rng);
 
         let server_registration = example_register(
             USERNAME.to_string(),
             PASSWORD.to_string(),
             &server_setup,
             client_rng.clone(),
-            server_rng.clone(),
         );
 
         assert_eq!(
