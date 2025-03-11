@@ -1,6 +1,8 @@
 use axum::{response::Html, routing::get, Router};
 
-pub fn router() -> Router {
+use super::AppState;
+
+pub fn router() -> Router<AppState> {
     Router::new().route("/", get(root))
 }
 
