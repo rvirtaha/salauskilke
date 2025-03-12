@@ -1,13 +1,11 @@
-use super::AppState;
-use crate::http::opaque::CS;
+use super::{errors::ApiResult, AppState};
 use crate::utils::base64::Base64String;
+use crate::{controllers::errors::ServiceError, http::opaque::CS};
 use axum::{
     extract::State,
     routing::{get, post},
     Json, Router,
 };
-use base64;
-use base64::Engine;
 use generic_array::GenericArray;
 use opaque_ke::{
     CredentialFinalizationLen, CredentialRequestLen, RegistrationRequestLen, RegistrationUploadLen,
@@ -33,20 +31,17 @@ struct RegisterInitRequest {
 async fn register_init(
     State(state): State<AppState>,
     Json(body): Json<RegisterInitRequest>,
-) -> Result<Base64String, String> {
-    let registration_request: GenericArray<u8, RegistrationRequestLen<CS>> = body
-        .registration_request
-        .decode()
-        .map_err(|e| e.to_string())?;
+) -> ApiResult<Base64String> {
+    let registration_request: GenericArray<u8, RegistrationRequestLen<CS>> =
+        body.registration_request.decode()?;
 
     let mut opaque_controller = state
         .opaque_controller
         .try_lock()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ServiceError::InternalError(e.to_string()))?;
 
-    let registration_response = opaque_controller
-        .register_init(body.username, registration_request)
-        .map_err(|_| "Protocol error")?;
+    let registration_response =
+        opaque_controller.register_init(body.username, registration_request)?;
 
     let response = Base64String::encode(&registration_response);
     Ok(response)
@@ -60,20 +55,16 @@ struct RegisterFinishRequest {
 async fn register_finish(
     State(state): State<AppState>,
     Json(body): Json<RegisterFinishRequest>,
-) -> Result<(), String> {
-    let registration_finish: GenericArray<u8, RegistrationUploadLen<CS>> = body
-        .registration_finish
-        .decode()
-        .map_err(|e| e.to_string())?;
+) -> ApiResult<()> {
+    let registration_finish: GenericArray<u8, RegistrationUploadLen<CS>> =
+        body.registration_finish.decode()?;
 
     let mut opaque_controller = state
         .opaque_controller
         .try_lock()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ServiceError::InternalError(e.to_string()))?;
 
-    opaque_controller
-        .register_finish(body.username, registration_finish)
-        .map_err(|e| e.to_string())?;
+    opaque_controller.register_finish(body.username, registration_finish)?;
 
     Ok(())
 }
@@ -86,20 +77,16 @@ struct LoginInitRequest {
 async fn login_init(
     State(state): State<AppState>,
     Json(body): Json<LoginInitRequest>,
-) -> Result<Base64String, String> {
-    let credential_request: GenericArray<u8, CredentialRequestLen<CS>> = body
-        .credential_request
-        .decode()
-        .map_err(|e| e.to_string())?;
+) -> ApiResult<Base64String> {
+    let credential_request: GenericArray<u8, CredentialRequestLen<CS>> =
+        body.credential_request.decode()?;
 
     let mut opaque_controller = state
         .opaque_controller
         .try_lock()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ServiceError::InternalError(e.to_string()))?;
 
-    let credential_response = opaque_controller
-        .login_start(body.username, credential_request)
-        .map_err(|e| e.to_string())?;
+    let credential_response = opaque_controller.login_start(body.username, credential_request)?;
 
     let response = Base64String::encode(&credential_response);
     Ok(response)
@@ -113,18 +100,16 @@ struct LoginFinishRequest {
 async fn login_finish(
     State(state): State<AppState>,
     Json(body): Json<LoginFinishRequest>,
-) -> Result<(), String> {
+) -> ApiResult<()> {
     let credential_finish: GenericArray<u8, CredentialFinalizationLen<CS>> =
-        body.credential_finish.decode().map_err(|e| e.to_string())?;
+        body.credential_finish.decode()?;
 
     let mut opaque_controller = state
         .opaque_controller
         .try_lock()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ServiceError::InternalError(e.to_string()))?;
 
-    opaque_controller
-        .login_finish(body.username, credential_finish)
-        .map_err(|e| e.to_string())?;
+    opaque_controller.login_finish(body.username, credential_finish)?;
 
     Ok(())
 }
