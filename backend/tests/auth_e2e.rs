@@ -5,9 +5,9 @@ use backend::{controllers::opaque::CS, utils::base64::Base64String};
 use base64::Engine;
 use generic_array::GenericArray;
 use opaque_ke::{
-    rand::rngs::OsRng, ClientLogin, ClientLoginFinishParameters, ClientRegistration,
-    ClientRegistrationFinishParameters, CredentialResponse, CredentialResponseLen,
-    RegistrationResponse, RegistrationResponseLen,
+    rand::rngs::OsRng, ClientLogin, ClientLoginFinishParameters, ClientLoginFinishResult,
+    ClientRegistration, ClientRegistrationFinishParameters, CredentialResponse,
+    CredentialResponseLen, RegistrationResponse, RegistrationResponseLen,
 };
 use reqwest::Client;
 use serde_json::json;
@@ -33,130 +33,127 @@ async fn test_server_setup() {
 }
 
 async fn register(
-    username: String,
-    password: String,
-    base_url: &String,
+    username: &str,
+    password: &str,
+    base_url: &str,
     client: &Client,
-    mut rng: OsRng,
+    rng: &mut OsRng,
 ) {
-    let client_registration_start =
-        ClientRegistration::<CS>::start(&mut rng, password.as_bytes()).unwrap();
+    let registration_start = ClientRegistration::<CS>::start(rng, password.as_bytes()).unwrap();
+    let registration_request = Base64String::encode(&registration_start.message.serialize());
 
-    let registration_request = client_registration_start.message.serialize();
-
-    let response = client
+    let response_body = client
         .post(format!("{}/auth/register/init", base_url))
-        .json(&json!({
-            "username": username,
-            "registration_request": Base64String::encode(&registration_request),
-        }))
+        .json(&json!({ "username": username, "registration_request": registration_request }))
         .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .text()
         .await
         .unwrap();
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let registration_response = Base64String::decode(&response_body.into())
+        .map(|r: GenericArray<u8, RegistrationResponseLen<CS>>| {
+            RegistrationResponse::deserialize(&r)
+        })
+        .unwrap()
+        .unwrap();
 
-    let response_body = response.text().await.unwrap();
-    let registration_response: GenericArray<u8, RegistrationResponseLen<CS>> =
-        Base64String::decode(&response_body.into()).unwrap();
-
-    let registration_finish = client_registration_start
+    let registration_finish = registration_start
         .state
         .finish(
-            &mut rng,
+            rng,
             password.as_bytes(),
-            RegistrationResponse::deserialize(&registration_response).unwrap(),
+            registration_response,
             ClientRegistrationFinishParameters::default(),
         )
-        .map(|r| r.message.serialize())
-        .map(|s| Base64String::encode(&s))
-        .unwrap();
+        .unwrap()
+        .message
+        .serialize();
 
-    let response = client
+    client
         .post(format!("{}/auth/register/finish", base_url))
-        .json(&json!({
-            "username": username,
-            "registration_finish": registration_finish,
-        }))
+        .json(&json!({ "username": username, "registration_finish": Base64String::encode(&registration_finish) }))
         .send()
         .await
+        .unwrap()
+        .error_for_status()
         .unwrap();
-
-    assert_eq!(response.status(), reqwest::StatusCode::OK)
 }
 
 async fn login(
-    username: String,
-    password: String,
-    base_url: &String,
+    username: &str,
+    password: &str,
+    base_url: &str,
     client: &Client,
-    mut rng: OsRng,
-) {
-    let login_start = ClientLogin::<CS>::start(&mut rng, password.as_bytes()).unwrap();
-    let credential_request = login_start.message.serialize();
+    rng: &mut OsRng,
+) -> ClientLoginFinishResult<CS> {
+    let login_start = ClientLogin::<CS>::start(rng, password.as_bytes()).unwrap();
+    let credential_request = Base64String::encode(&login_start.message.serialize());
 
-    let response = client
+    let response_body = client
         .post(format!("{}/auth/login/init", base_url))
-        .json(&json!({
-            "username": username,
-            "credential_request": Base64String::encode(&credential_request),
-        }))
+        .json(&json!({ "username": username, "credential_request": credential_request }))
         .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .text()
         .await
         .unwrap();
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
-
-    let response_body = response.text().await.unwrap();
-    let credential_response: GenericArray<u8, CredentialResponseLen<CS>> =
-        Base64String::decode(&response_body.into()).unwrap();
+    let credential_response = Base64String::decode(&response_body.into())
+        .map(|r: GenericArray<u8, CredentialResponseLen<CS>>| CredentialResponse::deserialize(&r))
+        .unwrap()
+        .unwrap();
 
     let login_finish = login_start
         .state
         .finish(
             password.as_bytes(),
-            CredentialResponse::deserialize(&credential_response).unwrap(),
+            credential_response,
             ClientLoginFinishParameters::default(),
         )
         .unwrap();
 
+    let login_finish_message = login_finish.message.serialize();
+
     let response = client
         .post(format!("{}/auth/login/finish", base_url))
-        .json(&json!({
-            "username": username,
-            "credential_finish": Base64String::encode(&login_finish.message.serialize()),
-        }))
+        .json(&json!({ "username": username, "credential_finish": Base64String::encode(&login_finish_message) }))
         .send()
         .await
+        .unwrap()
+        .error_for_status()
         .unwrap();
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK)
+    login_finish
 }
 
 #[tokio::test]
 async fn test_register_login_e2e() {
-    let (base_url, server_handle) = utils::setup_server().await;
+    let (base_url, _server_handle) = utils::setup_server().await;
     let client = Client::new();
     let mut rng = OsRng;
 
-    const USERNAME: &str = "john.doe@example.com";
-    const PASSWORD: &str = "salasana123";
-
     register(
-        USERNAME.to_string(),
-        PASSWORD.to_string(),
+        "john.doe@example.com",
+        "salasana123",
         &base_url,
         &client,
-        rng,
+        &mut rng,
     )
     .await;
 
-    login(
-        USERNAME.to_string(),
-        PASSWORD.to_string(),
+    let login_finish = login(
+        "john.doe@example.com",
+        "salasana123",
         &base_url,
         &client,
-        rng,
+        &mut rng,
     )
     .await;
 }
