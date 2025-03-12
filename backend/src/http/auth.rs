@@ -1,17 +1,15 @@
-use std::sync::Arc;
-
 use super::AppState;
 use crate::http::opaque::CS;
+use crate::utils::base64::Base64String;
 use axum::{
     extract::State,
-    response::Html,
     routing::{get, post},
     Json, Router,
 };
 use base64;
 use base64::Engine;
 use generic_array::GenericArray;
-use opaque_ke::{RegistrationRequestLen, RegistrationResponseLen};
+use opaque_ke::RegistrationRequestLen;
 use serde::Deserialize;
 
 pub fn router(state: AppState) -> Router<AppState> {
@@ -21,29 +19,28 @@ pub fn router(state: AppState) -> Router<AppState> {
         .route("/login/init", post(login_init))
         .route("/login/finish", post(login_finish))
         .route("/session", get(session))
+        .with_state(state)
 }
 
 #[derive(Deserialize)]
 struct RegisterInitRequest {
     username: String,
-    registration_request: String, // base64
+    registration_request: Base64String,
 }
 
 async fn register_init(
     State(state): State<AppState>,
     Json(body): Json<RegisterInitRequest>,
 ) -> Result<String, String> {
-    let binary_data = base64::engine::general_purpose::URL_SAFE
-        .decode(&body.registration_request)
-        .map_err(|_| "Invalid Base64 data")?;
-
-    let registration_request: GenericArray<u8, RegistrationRequestLen<CS>> =
-        GenericArray::from_exact_iter(binary_data.into_iter()).ok_or("Bad request")?;
+    let registration_request: GenericArray<u8, RegistrationRequestLen<CS>> = body
+        .registration_request
+        .decode()
+        .map_err(|e| e.to_string())?;
 
     let mut opaque_controller = state
         .opaque_controller
         .lock()
-        .map_err(|e| "Mutex Guard failed")?;
+        .map_err(|_| "Mutex Guard failed")?;
 
     let registration_response = opaque_controller
         .register_init(body.username, registration_request)
