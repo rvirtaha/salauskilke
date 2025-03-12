@@ -17,15 +17,19 @@ pub struct AppState {
     pub opaque_controller: Arc<Mutex<opaque::OpaqueController<OsRng>>>,
 }
 
+pub fn initialize_app_state(config: Config) -> AppState {
+    let opaque_controller = opaque::OpaqueController::default();
+
+    AppState {
+        config: Arc::new(config),
+        opaque_controller: Arc::new(Mutex::new(opaque_controller)),
+    }
+}
+
 pub async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let port = config.port;
 
-    let opaque_controller = opaque::OpaqueController::default();
-
-    let state = AppState {
-        config: Arc::new(config),
-        opaque_controller: Arc::new(Mutex::new(opaque_controller)),
-    };
+    let state = initialize_app_state(config);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     let app = router(state.clone()).with_state(state);
@@ -34,6 +38,6 @@ pub async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn router(state: AppState) -> Router<AppState> {
+pub fn router(state: AppState) -> Router<AppState> {
     index::router().nest("/auth", auth::router(state.clone()))
 }
