@@ -43,6 +43,28 @@ impl Base64String {
 
         Ok(result)
     }
+
+    pub fn encode<N: generic_array::ArrayLength<u8>>(data: &GenericArray<u8, N>) -> Self {
+        Base64String(base64::engine::general_purpose::URL_SAFE.encode(data))
+    }
+}
+
+impl<N: generic_array::ArrayLength<u8>> From<&GenericArray<u8, N>> for Base64String {
+    fn from(data: &GenericArray<u8, N>) -> Self {
+        Base64String::encode(data)
+    }
+}
+
+impl PartialEq<&str> for Base64String {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<String> for Base64String {
+    fn eq(&self, other: &String) -> bool {
+        self.0 == *other
+    }
 }
 
 #[cfg(test)]
@@ -72,6 +94,21 @@ mod tests {
             ]
             .into()
         )
+    }
+
+    #[test]
+    fn correctly_encodes_input() {
+        let data: GenericArray<u8, U5> = GenericArray::clone_from_slice(b"hello");
+        let encoded: Base64String = (&data).into();
+        assert_eq!(encoded, "aGVsbG8=");
+    }
+
+    #[test]
+    fn partial_eq_with_string_types_works() {
+        let b64_string = Base64String("Hello world".to_string());
+
+        assert_eq!(b64_string, "Hello world");
+        assert_eq!(b64_string, "Hello world".to_string());
     }
 
     #[test]
