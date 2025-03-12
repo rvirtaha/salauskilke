@@ -1,3 +1,6 @@
+use std::fmt::Display;
+
+use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use generic_array::GenericArray;
 use serde::Deserialize;
@@ -64,6 +67,18 @@ impl PartialEq<&str> for Base64String {
 impl PartialEq<String> for Base64String {
     fn eq(&self, other: &String) -> bool {
         self.0 == *other
+    }
+}
+
+impl Display for Base64String {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl IntoResponse for Base64String {
+    fn into_response(self) -> Response {
+        self.0.into_response()
     }
 }
 
