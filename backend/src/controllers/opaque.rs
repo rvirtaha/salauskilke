@@ -12,6 +12,8 @@ use opaque_ke::{
 };
 use std::collections::HashMap;
 
+use super::errors::ServiceError;
+
 pub struct CS;
 
 impl CipherSuite for CS {
@@ -48,8 +50,7 @@ impl<R: RngCore + CryptoRng> OpaqueController<R> {
         &mut self,
         username: String,
         registration_request: GenericArray<u8, RegistrationRequestLen<CS>>,
-    ) -> Result<GenericArray<u8, RegistrationResponseLen<CS>>, opaque_ke::errors::ProtocolError>
-    {
+    ) -> Result<GenericArray<u8, RegistrationResponseLen<CS>>, ServiceError> {
         let server_registration_start_result = ServerRegistration::<CS>::start(
             &self.opaque_server_setup,
             RegistrationRequest::deserialize(&registration_request)?,
@@ -63,7 +64,7 @@ impl<R: RngCore + CryptoRng> OpaqueController<R> {
         &mut self,
         username: String,
         registration_finish: GenericArray<u8, RegistrationUploadLen<CS>>,
-    ) -> Result<(), opaque_ke::errors::ProtocolError> {
+    ) -> Result<(), ServiceError> {
         let password_file = ServerRegistration::finish(RegistrationUpload::<CS>::deserialize(
             &registration_finish,
         )?);
@@ -78,18 +79,17 @@ impl<R: RngCore + CryptoRng> OpaqueController<R> {
         &mut self,
         username: String,
         credential_request: GenericArray<u8, CredentialRequestLen<CS>>,
-    ) -> Result<GenericArray<u8, CredentialResponseLen<CS>>, opaque_ke::errors::ProtocolError> {
-        let password_file = self
+    ) -> Result<GenericArray<u8, CredentialResponseLen<CS>>, ServiceError> {
+        let record = self
             .users
             .get(&username)
-            .ok_or(ProtocolError::InvalidLoginError)?; // TODO
-
-        let record = ServerRegistration::<CS>::deserialize(password_file)?;
+            .map(|p| ServerRegistration::<CS>::deserialize(p))
+            .transpose()?;
 
         let server_login_start_result = ServerLogin::start(
             &mut self.rng,
             &self.opaque_server_setup,
-            Some(record),
+            record,
             CredentialRequest::deserialize(&credential_request)?,
             username.as_bytes(),
             ServerLoginStartParameters::default(),
@@ -105,12 +105,12 @@ impl<R: RngCore + CryptoRng> OpaqueController<R> {
         &mut self,
         username: String,
         credential_finalization_bytes: GenericArray<u8, CredentialFinalizationLen<CS>>,
-    ) -> Result<(), opaque_ke::errors::ProtocolError> {
+    ) -> Result<(), ServiceError> {
         let server_login_start_result = self
             .login_sessions
             .get(&username)
             .cloned()
-            .ok_or(ProtocolError::InvalidLoginError)?; // TODO
+            .ok_or(ServiceError::LoginSessionMissingOrExpired)?;
 
         let credential_finalization =
             CredentialFinalization::deserialize(&credential_finalization_bytes)?;

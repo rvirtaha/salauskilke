@@ -8,6 +8,7 @@ use opaque_ke::rand::rngs::OsRng;
 
 use crate::{controllers::opaque, utils::config::Config};
 mod auth;
+mod errors;
 mod index;
 
 #[derive(Clone)]
