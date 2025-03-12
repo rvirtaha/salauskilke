@@ -3,7 +3,7 @@ use std::fmt::Display;
 use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use generic_array::GenericArray;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -26,7 +26,7 @@ impl std::fmt::Display for DecodeError {
 
 impl std::error::Error for DecodeError {}
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Base64String(String);
 
@@ -79,6 +79,12 @@ impl Display for Base64String {
 impl IntoResponse for Base64String {
     fn into_response(self) -> Response {
         self.0.into_response()
+    }
+}
+
+impl From<String> for Base64String {
+    fn from(value: String) -> Self {
+        Base64String(value)
     }
 }
 
