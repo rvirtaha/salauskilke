@@ -33,7 +33,7 @@ struct RegisterInitRequest {
 async fn register_init(
     State(state): State<AppState>,
     Json(body): Json<RegisterInitRequest>,
-) -> Result<String, String> {
+) -> Result<Base64String, String> {
     let registration_request: GenericArray<u8, RegistrationRequestLen<CS>> = body
         .registration_request
         .decode()
@@ -48,7 +48,7 @@ async fn register_init(
         .register_init(body.username, registration_request)
         .map_err(|_| "Protocol error")?;
 
-    let response = base64::engine::general_purpose::URL_SAFE.encode(registration_response);
+    let response = Base64String::encode(&registration_response);
     Ok(response)
 }
 
@@ -86,7 +86,7 @@ struct LoginInitRequest {
 async fn login_init(
     State(state): State<AppState>,
     Json(body): Json<LoginInitRequest>,
-) -> Result<String, String> {
+) -> Result<Base64String, String> {
     let credential_request: GenericArray<u8, CredentialRequestLen<CS>> = body
         .credential_request
         .decode()
@@ -101,7 +101,7 @@ async fn login_init(
         .login_start(body.username, credential_request)
         .map_err(|e| e.to_string())?;
 
-    let response = base64::engine::general_purpose::URL_SAFE.encode(credential_response);
+    let response = Base64String::encode(&credential_response);
     Ok(response)
 }
 
