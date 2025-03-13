@@ -2,7 +2,6 @@
 mod utils;
 
 use backend::{controllers::opaque::CS, utils::base64::Base64String};
-use base64::Engine;
 use generic_array::GenericArray;
 use opaque_ke::{
     rand::rngs::OsRng, ClientLogin, ClientLoginFinishParameters, ClientLoginFinishResult,
@@ -28,7 +27,6 @@ async fn test_server_setup() {
     let response_text = response.text().await.expect("Failed to read response");
     assert_eq!(response_text, "Hello world!");
 
-    // Stop the server
     server_handle.abort();
 }
 
@@ -121,7 +119,7 @@ async fn login(
 
     let login_finish_message = login_finish.message.serialize();
 
-    let response = client
+    client
         .post(format!("{}/auth/login/finish", base_url))
         .json(&json!({ "username": username, "credential_finish": Base64String::encode(&login_finish_message) }))
         .send()
@@ -135,25 +133,36 @@ async fn login(
 
 #[tokio::test]
 async fn test_register_login_e2e() {
-    let (base_url, _server_handle) = utils::setup_server().await;
+    let (base_url, server_handle) = utils::setup_server().await;
     let client = Client::new();
     let mut rng = OsRng;
 
-    register(
-        "john.doe@example.com",
-        "salasana123",
-        &base_url,
-        &client,
-        &mut rng,
-    )
-    .await;
+    register("alice@example.com", "a$$word", &base_url, &client, &mut rng).await;
 
-    let login_finish = login(
-        "john.doe@example.com",
-        "salasana123",
-        &base_url,
-        &client,
-        &mut rng,
-    )
-    .await;
+    let login_finish1 = login("alice@example.com", "a$$word", &base_url, &client, &mut rng).await;
+
+    let login_finish2 = login("alice@example.com", "a$$word", &base_url, &client, &mut rng).await;
+
+    assert_eq!(login_finish1.export_key, login_finish2.export_key);
+    assert_eq!(login_finish1.server_s_pk, login_finish2.server_s_pk);
+
+    register("bob@example.com", "secret", &base_url, &client, &mut rng).await;
+
+    login("bob@example.com", "secret", &base_url, &client, &mut rng).await;
+
+    server_handle.abort();
+}
+
+#[tokio::test]
+#[should_panic]
+async fn incorrect_password_fails_e2e() {
+    let (base_url, server_handle) = utils::setup_server().await;
+    let client = Client::new();
+    let mut rng = OsRng;
+
+    register("dave@example.com", "letmein", &base_url, &client, &mut rng).await;
+
+    login("dave@example.com", "what", &base_url, &client, &mut rng).await;
+
+    server_handle.abort();
 }
