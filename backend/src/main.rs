@@ -4,16 +4,14 @@
 #![deny(clippy::panic)]
 #![deny(unused_must_use)]
 
-pub mod controllers;
-pub mod http;
-pub mod models;
-pub mod utils;
-
 use dotenv::dotenv;
 use envconfig::Envconfig;
-use models::Models;
-use utils::config;
-use utils::pg_pool;
+
+use backend::controllers;
+use backend::http;
+use backend::models::Models;
+use backend::utils::config;
+use backend::utils::pg_pool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
