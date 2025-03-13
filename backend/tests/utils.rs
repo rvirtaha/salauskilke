@@ -8,9 +8,11 @@ pub async fn setup_server() -> (String, JoinHandle<()>) {
     dotenv::dotenv().ok();
 
     let config = Config::init_from_env().expect("Failed to load config");
-    let port = config.port;
+    // let port = config.port;
 
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+    // Binding to 0 lets the os assing free port to allow multi-threaded
+    // e2e tests. This avoids address already in use error.
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", 0))
         .await
         .expect("Failed to bind");
     let addr = listener.local_addr().expect("Failed to get local address");
