@@ -1,52 +1,93 @@
 # Salauskilke
 
-An application which allows easy and cryptographically safe sharing of secrets using Shamirs secret sharing system.
+## Overview of the opaque protocol
 
-## Terms used:
+OPAQUE (Oblivious Pseudo-Random Function (OPRF) Augmented Password Authenticated Key Exchange) is a protocol designed to securely authenticate users based on their passwords without exposing the passwords to the server. It consists of two main stages: registration and authenticated key exchange (AKE).
 
-**user**
-A human user of the application. User accounts should be personal. Each user has their own public-private key pair and can be a member of multiple groups.
+Registration Phase:
 
-**member**
-A user who is a part of a secret-group. Members control the Shamir-shares. A user has a membership for each secret group which they are a part of.
+    Client Initiation: The client, knowing its password, initiates the registration by generating a registration start message and a secret client state.
 
-**secret**
-The secret text or file, which should be encrypted and shared. E.g. a secret message, which can only be read if enough members are present. A new group and memberships are created for each secret, even if the group contains the same users as another group, to make sure no keys can be reused for multiple secrets.
+    Server Response: The server, possessing its private parameters, processes the client's message and generates a registration response.
 
-**group, Shamir-group, secret group**
-The n members who form a Shamir-group control the secret shares of the secret, which can be used to decrypt the encoded secret with k members.
+    Client Finalization: Using the server's response and its secret state, the client creates a registration finish message and sends it to the server.
 
-**share, Shamir-share, secret share**
-The shares of fragments the S4 algorithm produces. A threshold number k of these shares can be used to decode the secret.
+    Server Storage: The server finalizes the registration by storing the client's record in its database.
 
-**Shamir's secret sharing system, S4**
-(wikipedia)[https://en.wikipedia.org/wiki/Shamir's_secret_sharing]
-The algorithm which allows k members from a Shamir-group of n to decrypt the encoded secret.
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
 
-**Initialization vector**
-Used to ensures that encrypting the same plaintext multiple times with the same key produces different ciphertexts, by introducing randomness to the plaintext. Analogous to salting password hashes.
+    note over Client: Knows: password, client_id, server_id
+    note over Server: Knows: server_id, server params
 
-**Asymmetric encryption, RSA**
-Also public-private -key encryption. Anyone can use the public key to encrypt data, but only the holder of the private key can decrypt it, ensuring secure communication without needing to share secret keys. RSA is used in this project to allow anyone to "send" secrets to the Shamir-group by encrypting them using the public key.
+    note left of Client: 1. Generate registration start message<br/>and a secret client state
+    Client->>Client: state, message = ClientRegistration::start(password)
+    note right of Client: Send username and registration message
+    Client->>Server: message, client_id
 
-**Symmetric encryption, AES**
-Symmetric encryption uses the same key to encrypt the plaintext and decrypt the ciphertext. Symmetric encryption is used for block-ciphers (encrypting the plaintext secrets), because AES can encrypt large files quickly, which would be impractical with RSA.
+    note right of Server: 2. Generate response based on secret server params
+    Server->>Server: resp = ServerRegistration::start(message, params, client_id)
+    note left of Server: Send registration response
+    Server->>Client: resp
 
-**Key derivation / Argon2**
-We cannot directly use a user's password to encrypt their private RSA keys. Also, we should never store the user's password in plaintext, but rather store a salted hash of it. Password based key derivation functions such as bcrypt, PBKDF2 or Argon2 fix both of these issues. This application uses Argon2id.
+    note left of Client: 3. Generate registration finish message from<br/>secret state from step 1. and server response
+    Client->>Client: fin_msg = state.finish(resp, client_id, server_id)
+    note right of Client: Send registration finish
 
-**E2E encryption, end-to-end encryption**
-Decrypted secrets only ever exist on a client device. At no point is there enough information server-side to decrypt any secrets.
+    Client->>Server: fin_msg, client_id
+    note right of Server: Finalizes registration and stores client record in db
 
+    Server->>Server: client_record = ServerRegistration::finish(fin_msg)
+    Server->>Server: INSERT INTO accounts VALUES (client_id, client_record);
+    Server->>Client: HTTP 201 - registration success
+```
 
-## Overview of the encryption system
+Login Phase:
 
-...
+    Client Initiation: The client starts the login process by generating a login start message and a secret client state using its password.
 
+    Server Response: The server retrieves the client's record from its database and generates a login response based on this record and the client's message.
 
-## Development
+    Client Finalization: The client processes the server's response using its secret state, resulting in a session key and an export key. It then sends a login finish message to the server.
 
-### Setup
+    Server Verification: The server verifies the client's finish message and derives the same session key.
 
-[vscode rust setup](https://www.youtube.com/watch?v=ZhedgZtd8gw)
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
 
+    note over Client: Knows: password, client_id, server_id
+    note over Server: Knows: server_id, server_setup, password_file
+
+    note left of Client: 1. Generate login start message<br/>and a secret client state
+    Client->>Client: state, msg = ClientLogin::start(password)
+    note right of Client: Send username and login start message
+    Client->>Server: msg, client_id
+
+    note right of Server: Fetch client record from db,<br/>then generate login response
+    Server->>Server: rec = SELECT client_record FROM accounts<br/>WHERE client_id = client_id;
+    Server->>Server: resp = ServerLogin::start(params, rec, msg, client_id)
+    note left of Server: Send login response
+    Server->>Client: resp
+
+    note left of Client: Client runs login finish based on the<br/>secret state from step 1.<br/>This results in a session key and an<br/>export key which is stable across sessions
+    Client->>Client: fin_msg, session, export_key = state.finish(password, resp)
+    note right of Client: Send login finish message
+    Client->>Server: fin_msg
+
+    note right of Server: Server validates the login finish message<br/>and gets the same session key as client
+    Server->>Server: session = ServerLogin::finish(login_finish.message)
+    Server->>Client: HTTP 200 - login success
+
+    note over Client, Server: Client and server now have a shared export key which<br/>can be used for symmetrical encryption between them
+    note over Client: Client can use the export key to derive for e.g. pgp keys
+
+```
+
+Both the client and server now share a session key, enabling secure communication. Additionally, the export key can be used by the client for application-specific purposes, such as encrypting additional data.
+CFRG
+
+This protocol ensures that the client's password is never exposed to the server, enhancing security against potential breaches.
