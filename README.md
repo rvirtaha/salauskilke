@@ -1,5 +1,7 @@
 # Salauskilke
 
+This is an experimental project into using cryptography and rust. The goal is to build an end-to-end encrypted application using OPAQUE for client-server key exchange.
+
 ## Overview of the opaque protocol
 
 OPAQUE (Oblivious Pseudo-Random Function (OPRF) Augmented Password Authenticated Key Exchange) is a protocol designed to securely authenticate users based on their passwords without exposing the passwords to the server. It consists of two main stages: registration and authenticated key exchange (AKE).
